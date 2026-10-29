@@ -1,18 +1,171 @@
 # steady-multiphase-flow
 
-稳态气液两相管流计算程序，以及一套**可插拔的论文闭合关系式库**。
+**Steady-state multiphase pipe-flow simulator + a pluggable, paper-faithful closure library.**
 
-Steady-state multiphase pipe-flow simulator (drift-flux / Beggs–Brill / Mukherjee–Brill /
-Xiao) with a paper-faithful closure library: wall friction, interfacial friction, slug
-holdup, slug length, translation velocity and annular entrainment can each be swapped
-independently, and every branch documents the paper, page and equation it came from.
+[English](#english) · [中文](#中文)
+
+> **Code only.** This repository contains no experimental datasets, no case queues, no
+> per-case predictions, no error statistics and no analysis reports. You supply your own inputs.
+
+---
+
+## English
+
+### What this is
+
+Two independent pieces:
+
+1. **`steady/`** — the simulator core: segmented forward marching, a PVT interface, flow-pattern
+   detection, four two-phase models (Beggs–Brill, Mukherjee–Brill, drift-flux, Xiao), a thermal
+   model, and a command-line entry point (`python -m steady.run`).
+2. **`closures/`** — splits pressure-gradient and holdup calculation into **12 independently
+   swappable closure slots**. Each slot implements several relations from the open literature;
+   the default of every slot reproduces the original Xiao model. Use it for controlled
+   "swap one closure, see how far the answer moves" experiments.
+
+The design goal is not maximum accuracy but **attributability**: any change in a result traces
+back to one equation in one slot, and that equation's implementation caliber (Fanning vs Darcy,
+superficial vs actual phase velocity, hydraulic diameter vs pipe diameter, validity gates) is
+documented in the code.
+
+### Install
+
+```bash
+git clone https://github.com/hyx0112/steady-multiphase-flow.git
+cd steady-multiphase-flow
+pip install -e .              # or: pip install numpy pandas and use it in place
+```
+
+Requires Python ≥ 3.9, numpy and pandas. Optional extras: `pip install -e ".[plots,pvt]"`
+(matplotlib for plots, thermo for PVT flash).
+
+### Quickstart
+
+```bash
+python examples/quickstart.py
+```
+
+Same operating point, same flow pattern, only the wall-friction closure changes:
+
+```
+variant                     dP/dL      H_L  converged
+------------------------------------------------------
+xiao                        710.0   0.7033       True
+kowalski1987                377.8   0.6439       True
+ottens2001                  643.8   0.7132       True
+petalas_wall               1111.0   0.7407       True
+biberg1999_wall_full        710.0   0.7033       True
+```
+
+Units: `dP/dL` in Pa/m, `H_L` dimensionless.
+
+Direct usage:
+
+```python
+import math
+from closures.xiao_model_faithful import XiaoInput, xiao_pressure_gradient
+
+inp = XiaoInput(
+    total_mass_flow=40.0,        # kg/s
+    gas_mass_fraction=0.05,      # -
+    rho_gas=30.0, rho_liquid=830.0,
+    mu_gas=1.6e-5, mu_liquid=3.0e-3,
+    diameter=0.15, roughness=4.5e-5,
+    angle_rad=math.radians(2.0),  # positive = uphill
+    surface_tension=0.025,
+    pressure_Pa=3.0e6,
+    flow_pattern_override="stratified",             # pin the pattern, compare closures only
+    stratified_wall_friction_closure="petalas_wall",
+)
+r = xiao_pressure_gradient(inp)
+print(r.dp_dL_total, r.liquid_holdup_inclined, r.flow_pattern, r.converged)
+```
+
+**Every input and output is SI**: kg/s, kg/m³, Pa·s, m, rad, N/m, Pa, Pa/m.
+
+### The 12 closure slots
+
+| Slot | Default | What swapping it affects |
+|---|---|---|
+| `stratified_wall_friction_closure` | `xiao` | stratified pressure gradient (`fL` dominates) |
+| `stratified_interfacial_closure` | `xiao` | stratified holdup and pressure gradient |
+| `intermittent_slug_holdup_closure` | `gregory1978` | slug-body holdup |
+| `intermittent_slug_length_closure` | `scott1987` | slug length (inert by default, see below) |
+| `intermittent_translation_closure` | `xiao` | slug translation velocity |
+| `intermittent_pressure_extra_closure` | `none` | additional pressure-loss term |
+| `annular_entrainment_closure` | `oliemans` | annular entrainment and pressure gradient |
+| `annular_interfacial_closure` | `xiao` | annular gas-core/film interfacial friction |
+| `flow_pattern_closure` | `xiao` | flow-pattern map |
+| `dispersed_bubble_closure` | `xiao` | dispersed-bubble solver |
+| `intermittent_film_interfacial_closure` | `constant` | film-zone interfacial friction |
+| `single_phase_limit_closure` | `legacy` | single-phase limit routing |
+
+About 45 variants in total — each with its paper reference and caliber convention — are listed in
+**[docs/closure_catalogue.md](docs/closure_catalogue.md)**.
+
+### Three things to know before you use it
+
+1. **The slug-length slot is inert by default.** With `pressure_extra_closure="none"`, `Ls` does
+   not change the result inside the ratio-weighted structure of Xiao Eq. 30/31 — swapping the
+   length relation gives bit-identical numbers. It is still evaluated, though, so out-of-domain
+   parameters still raise `ValueError` and drop the case. **Inert is not the same as safe.**
+2. **Slug holdup is clamped to `[0.48, 1]`.** In every branch except `gomez2000_orig` /
+   `*_via_kim2020` — including the baseline `gregory1978` — the value is returned as
+   `clamp(holdup, 0.48, 1.0)`. That is the existing behaviour of the original Xiao model; this
+   library does not quietly remove it. Whether to apply the clamp is a separate experimental
+   setting and must be recorded explicitly.
+3. **`E` is a mass-flow fraction.** `annular_entrainment_closure` returns the **entrained liquid
+   mass-flow fraction**, not a holdup, not a film fraction, not a volumetric ratio.
+
+### Fidelity rules
+
+This is a library for **comparative** studies, not a "calculates anything" library. The hard
+constraints:
+
+- No implicit empirical coefficients added inside a reference function, no ad-hoc clipping, no
+  changing the exponents given in the paper.
+- Relations the framework cannot host (missing dependency, single flow pattern only, undisclosed
+  constant) are marked `MISSING_DEPENDENCY` / `PARTIAL_IMPLEMENTATION` / `SECONDARY_ONLY` rather
+  than being forced in.
+- Missing parameters or out-of-domain inputs raise explicitly. **Errors are not counted as
+  successes, and there is no silent fallback to the baseline.**
+- A variant is never retuned because it scores worse — that would be data fitting, not
+  implementing the paper.
+
+The docstring above every branch records the paper, journal volume/pages, equation numbers, the
+unit-caliper chain, and where the implementation is approximate or cannot be completed.
+**Reading the docstrings is more useful than reading this README.**
+
+### Tests
+
+```bash
+python -m unittest discover -s steady -p "test_*.py" -t .
+```
+
+### Citing
+
+If you use these closure implementations in a paper, please cite the **original literature**
+(full references are in the code docstrings) alongside this repository. The original authors are
+the authors of these relations.
+
+Third-party implementation references (Mandhane flow-pattern boundaries and the Taitel–Dukler
+boundary splines are adapted from [Caleb Bell's `fluids`](https://github.com/CalebBell/fluids),
+MIT) are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+### License
+
+MIT. See [LICENSE](LICENSE).
+
+---
+
+## 中文
+
+稳态气液两相管流计算程序，以及一套**可插拔的论文闭合关系式库**。
 
 > **本仓库只放程序。** 不含任何实验数据、算例队列、逐例预测输出、误差统计或分析报告。
 > 想跑自己的算例，输入由你提供。
 
----
-
-## 这是什么
+### 这是什么
 
 两件事：
 
@@ -26,7 +179,7 @@ independently, and every branch documents the paper, page and equation it came f
 并且那个式子的实现口径（Fanning/Darcy、用表观速还是实际相速、水力直径还是管径、
 适用域闸门）在代码里有据可查。
 
-## 安装
+### 安装
 
 ```bash
 git clone https://github.com/hyx0112/steady-multiphase-flow.git
@@ -36,7 +189,7 @@ pip install -e .            # 或： pip install numpy pandas 后直接用
 
 依赖：Python ≥ 3.9、numpy、pandas。出图需要 matplotlib，PVT 闪蒸需要 thermo（均可选）。
 
-## 快速开始
+### 快速开始
 
 ```bash
 python examples/quickstart.py
@@ -80,7 +233,7 @@ print(r.dp_dL_total, r.liquid_holdup_inclined, r.flow_pattern, r.converged)
 
 **全部输入输出都是 SI 单位**：kg/s、kg/m³、Pa·s、m、rad、N/m、Pa、Pa/m。
 
-## 闭合槽位
+### 闭合槽位
 
 | 槽位 | 默认 | 换它会影响 |
 |---|---|---|
@@ -100,7 +253,7 @@ print(r.dp_dL_total, r.liquid_holdup_inclined, r.flow_pattern, r.converged)
 约 45 个变体的完整清单、每支的论文出处与口径约定见
 **[docs/closure_catalogue.md](docs/closure_catalogue.md)**。
 
-## 三条使用前必须知道的事
+### 三条使用前必须知道的事
 
 1. **段塞长度槽位默认是惰性的。** 在 `pressure_extra_closure="none"` 下，`Ls` 在 Xiao
    Eq.30/31 的比值加权结构里不改变结果——换长度关系式算出来的数会一模一样。但它仍然在求值，
@@ -111,7 +264,7 @@ print(r.dp_dL_total, r.liquid_holdup_inclined, r.flow_pattern, r.converged)
 3. **`E` 是质量流量分数。** `annular_entrainment_closure` 输出的是夹带液体的**质量流量份额**，
    不是持液率、不是液膜分数、不是体积比。
 
-## 忠实性规则
+### 忠实性规则
 
 这是一个用于**对照研究**的库，不是"什么都能算"的库。约束：
 
@@ -124,13 +277,13 @@ print(r.dp_dL_total, r.liquid_holdup_inclined, r.flow_pattern, r.converged)
 代码里每个分支上方的 docstring 记录了论文、期刊卷期页码、式号、单位口径链，以及在哪些
 地方做了近似、哪些地方做不到。**读 docstring 比读本 README 有用。**
 
-## 测试
+### 测试
 
 ```bash
 python -m unittest discover -s steady -p "test_*.py" -t .
 ```
 
-## 引用
+### 引用
 
 如果你在论文里用了这里的闭合实现，请同时引用**原始文献**（代码 docstring 里有完整出处）
 和本仓库。原论文作者才是这些关系式的作者。
@@ -139,6 +292,6 @@ python -m unittest discover -s steady -p "test_*.py" -t .
 [Caleb Bell `fluids`](https://github.com/CalebBell/fluids)，MIT）见
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-## License
+### License
 
 MIT。见 [LICENSE](LICENSE)。
