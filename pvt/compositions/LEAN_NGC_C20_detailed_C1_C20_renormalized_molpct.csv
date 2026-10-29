@@ -1,0 +1,25 @@
+﻿component,formula,LEAN_NGC_C20_C1_C20_mol_pct,phase_role
+Nitrogen,N2,1,non_hydrocarbon
+Carbon dioxide,CO2,2,non_hydrocarbon
+Methane,C1,74.97,light_gas
+Ethane,C2,9,light_condensate_gas
+Propane,C3,5.5,condensate_gas
+i-Butane,i-C4,1.2,condensate_gas
+n-Butane,n-C4,1.8,condensate_gas
+i-Pentane,i-C5,0.75,condensate
+n-Pentane,n-C5,0.85,condensate
+n-Hexane,C6,0.8,condensate
+n-Heptane,C7,0.6,heavy_condensate
+n-Octane,C8,0.45,heavy_condensate
+n-Nonane,C9,0.3,heavy_condensate
+n-Decane,C10,0.22,heavy_condensate
+n-Undecane,C11,0.17,heavy_condensate
+n-Dodecane,C12,0.12,heavy_condensate
+n-Tridecane,C13,0.08,heavy_condensate
+n-Tetradecane,C14,0.06,heavy_condensate
+n-Pentadecane,C15,0.04,heavy_condensate
+n-Hexadecane,C16,0.03,heavy_condensate
+n-Heptadecane,C17,0.02,heavy_condensate
+n-Octadecane,C18,0.015,heavy_condensate
+n-Nonadecane,C19,0.01,heavy_condensate
+n-Eicosane,C20,0.015,heavy_condensate

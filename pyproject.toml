@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "steady-multiphase-flow"
 version = "0.1.0"
-description = "Steady-state multiphase pipe flow simulator with a paper-faithful closure library"
+description = "Steady and transient multiphase pipe flow: simulator, paper-faithful closure library, OLGA batch driver and NeqSim->OLGA PVT table generator"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "steady-multiphase-flow contributors" }]
-keywords = ["multiphase flow", "pipeline", "pressure gradient", "holdup", "flow pattern", "closures"]
+keywords = ["multiphase flow", "pipeline", "pressure gradient", "holdup", "flow pattern", "closures", "olga", "neqsim", "pvt table", "transient batch"]
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -22,6 +22,7 @@ dependencies = ["numpy>=1.23", "pandas>=1.5"]
 [project.optional-dependencies]
 plots = ["matplotlib>=3.5"]
 pvt = ["thermo>=0.2"]
+neqsim = ["neqsim==3.16.0", "numpy>=1.23"]
 
 [project.urls]
 Repository = "https://github.com/hyx0112/steady-multiphase-flow"

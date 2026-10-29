@@ -1,0 +1,25 @@
+﻿component,formula,HGC_C_C1_C20_mol_pct,phase_role
+Nitrogen,N2,0.80971659919,non_hydrocarbon
+Carbon dioxide,CO2,3.03643724696,non_hydrocarbon
+Methane,C1,41.1032388664,light_gas
+Ethane,C2,10.1214574899,light_condensate_gas
+Propane,C3,10.1214574899,condensate_gas
+i-Butane,i-C4,3.54251012146,condensate_gas
+n-Butane,n-C4,5.56680161943,condensate_gas
+i-Pentane,i-C5,3.03643724696,condensate
+n-Pentane,n-C5,4.55465587045,condensate
+n-Hexane,C6,4.55465587045,condensate
+n-Heptane,C7,3.54251012146,heavy_condensate
+n-Octane,C8,2.83400809717,heavy_condensate
+n-Nonane,C9,2.02429149798,heavy_condensate
+n-Decane,C10,1.51821862348,heavy_condensate
+n-Undecane,C11,1.01214574899,heavy_condensate
+n-Dodecane,C12,0.759109311741,heavy_condensate
+n-Tridecane,C13,0.506072874494,heavy_condensate
+n-Tetradecane,C14,0.354251012146,heavy_condensate
+n-Pentadecane,C15,0.253036437247,heavy_condensate
+n-Hexadecane,C16,0.182186234818,heavy_condensate
+n-Heptadecane,C17,0.121457489879,heavy_condensate
+n-Octadecane,C18,0.080971659919,heavy_condensate
+n-Nonadecane,C19,0.0607287449393,heavy_condensate
+n-Eicosane,C20,0.303643724696,detailed_heavy_component

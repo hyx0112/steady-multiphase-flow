@@ -1,11 +1,19 @@
 # steady-multiphase-flow
 
-**Steady-state multiphase pipe-flow simulator + a pluggable, paper-faithful closure library.**
+**Steady and transient multiphase pipe flow**: a simulator with a pluggable, paper-faithful
+closure library, an OLGA batch driver, and a NeqSim → OLGA PVT table generator.
 
 [English](#english) · [中文](#中文)
 
 > **Code only.** This repository contains no experimental datasets, no case queues, no
 > per-case predictions, no error statistics and no analysis reports. You supply your own inputs.
+
+| Directory | Role |
+| --- | --- |
+| [`steady/`](#1-steady--the-steady-state-simulator) | steady-state simulator + PVT interface |
+| [`closures/`](#2-closures--the-pluggable-closure-library) | 12 swappable closure slots |
+| [`transient/`](transient/README.md) | OLGA batch invocation (`check` / `run` / `status` / `curves`) |
+| [`pvt/`](pvt/README.md) | NeqSim → OLGA `.tab` table generation, shared by both sides |
 
 ---
 
@@ -13,7 +21,7 @@
 
 ### What this is
 
-Two independent pieces:
+Four pieces, sharing one PVT table contract:
 
 1. **`steady/`** — the simulator core: segmented forward marching, a PVT interface, flow-pattern
    detection, four two-phase models (Beggs–Brill, Mukherjee–Brill, drift-flux, Xiao), a thermal
@@ -22,6 +30,17 @@ Two independent pieces:
    swappable closure slots**. Each slot implements several relations from the open literature;
    the default of every slot reproduces the original Xiao model. Use it for controlled
    "swap one closure, see how far the answer moves" experiments.
+3. **`transient/`** — `olga_batch_flow.py`, a single standard-library file that runs a directory
+   of `.genkey` cases through OLGA concurrently, judges completion from the artefacts rather
+   than from the exit code, and parses `.tpl` trends into one long CSV.
+   See [transient/README.md](transient/README.md).
+4. **`pvt/`** — `neqsim_tab`, which turns a detailed C1–C20 composition into an OLGA two-phase
+   `PVTTABLE` over a rectangular P × T grid, plus a flash audit and a manifest.
+   See [pvt/README.md](pvt/README.md).
+
+Pieces 3 and 4 are the run-side and property-side companions of the steady solver, not a second
+solver: `olga_batch_flow.py` drives a commercial code, and `neqsim_tab` only produces the
+property table that both sides consume.
 
 The design goal is not maximum accuracy but **attributability**: any change in a result traces
 back to one equation in one slot, and that equation's implementation caliber (Fanning vs Darcy,
@@ -38,6 +57,11 @@ pip install -e .              # or: pip install numpy pandas and use it in place
 
 Requires Python ≥ 3.9, numpy and pandas. Optional extras: `pip install -e ".[plots,pvt]"`
 (matplotlib for plots, thermo for PVT flash).
+
+The other two directories are run in place and are **not** installed by `pip install -e .`:
+`transient/` needs only the standard library plus an OLGA installation and licence, and `pvt/`
+needs its own environment (`pip install -r pvt/requirements-neqsim.txt`, neqsim pinned, plus a
+JDK 17+).
 
 ### Quickstart
 
@@ -86,7 +110,7 @@ print(r.dp_dL_total, r.liquid_holdup_inclined, r.flow_pattern, r.converged)
 ### The 12 closure slots
 
 | Slot | Default | What swapping it affects |
-|---|---|---|
+| --- | --- | --- |
 | `stratified_wall_friction_closure` | `xiao` | stratified pressure gradient (`fL` dominates) |
 | `stratified_interfacial_closure` | `xiao` | stratified holdup and pressure gradient |
 | `intermittent_slug_holdup_closure` | `gregory1978` | slug-body holdup |
@@ -160,20 +184,36 @@ MIT. See [LICENSE](LICENSE).
 
 ## 中文
 
-稳态气液两相管流计算程序，以及一套**可插拔的论文闭合关系式库**。
+**瞬态 + 稳态**气液两相管流：稳态仿真与可插拔的论文闭合关系式库，配 OLGA 批量调用驱动和
+NeqSim → OLGA 物性表生成器。
 
 > **本仓库只放程序。** 不含任何实验数据、算例队列、逐例预测输出、误差统计或分析报告。
 > 想跑自己的算例，输入由你提供。
 
+| 目录 | 作用 |
+| --- | --- |
+| [`steady/`](#steady--稳态管道仿真核心) | 稳态仿真核心 + PVT 接口 |
+| [`closures/`](#closures--可插拔闭合库) | 12 个可替换闭合槽位 |
+| [`transient/`](transient/README.md) | OLGA 批量调用（`check` / `run` / `status` / `curves`） |
+| [`pvt/`](pvt/README.md) | NeqSim → OLGA `.tab` 生成，瞬态/稳态两侧共用 |
+
 ### 这是什么
 
-两件事：
+四件事，共用同一套 PVT 表契约：
 
 1. **`steady/`** —— 稳态管道仿真核心。分段正向求解、PVT 接口、流型判别、四个两相模型
    （Beggs–Brill、Mukherjee–Brill、漂移流、Xiao）、热模型、命令行入口 `python -m steady.run`。
 2. **`closures/`** —— 把两相压降/持液率计算拆成 **12 个可独立替换的闭合槽位**，每个槽位
    实现了若干篇公开文献的关系式，默认值等于 Xiao 原模型。用来做"换一个闭合式，结果差多少"
    的对照实验。
+3. **`transient/`** —— `olga_batch_flow.py`，单文件纯标准库：把一个目录里的 `.genkey` 批量
+   并发跑过 OLGA，按**产物**而不是退出码判定是否跑完，再把 `.tpl` 的趋势解析成一张长表 CSV。
+   见 [transient/README.md](transient/README.md)。
+4. **`pvt/`** —— `neqsim_tab`：把详细 C1–C20 组分在矩形 P × T 网格上生成 OLGA 两相
+   `PVTTABLE`，同时产出闪蒸审计和 manifest。见 [pvt/README.md](pvt/README.md)。
+
+第 3、4 项是稳态求解器的**运行侧**和**物性侧**配套，不是第二套求解器：`olga_batch_flow.py`
+驱动的是商业软件，`neqsim_tab` 只生成两侧共用的物性表。
 
 设计目标不是"算得最准"，而是**可归因**：任何一次结果变化，都能追到某个槽位里的某一个式子，
 并且那个式子的实现口径（Fanning/Darcy、用表观速还是实际相速、水力直径还是管径、
@@ -188,6 +228,10 @@ pip install -e .            # 或： pip install numpy pandas 后直接用
 ```
 
 依赖：Python ≥ 3.9、numpy、pandas。出图需要 matplotlib，PVT 闪蒸需要 thermo（均可选）。
+
+另外两个目录是**就地运行、不随 `pip install -e .` 安装**的：`transient/` 只需标准库 +
+本机 OLGA 与 license；`pvt/` 需要单独的环境（`pip install -r pvt/requirements-neqsim.txt`，
+neqsim 钉版本，另需 JDK 17+）。
 
 ### 快速开始
 
@@ -236,7 +280,7 @@ print(r.dp_dL_total, r.liquid_holdup_inclined, r.flow_pattern, r.converged)
 ### 闭合槽位
 
 | 槽位 | 默认 | 换它会影响 |
-|---|---|---|
+| --- | --- | --- |
 | `stratified_wall_friction_closure` | `xiao` | 分层流压降（`fL` 主导） |
 | `stratified_interfacial_closure` | `xiao` | 分层流持液率与压降 |
 | `intermittent_slug_holdup_closure` | `gregory1978` | 段塞流持液率 |

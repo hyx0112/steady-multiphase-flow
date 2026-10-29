@@ -1,0 +1,4 @@
+# NeqSim -> OLGA .tab backend (offline; not part of the OLGA run chain)
+# Also needs a 64-bit JDK 17+ (set JAVA_HOME, or have java on PATH)
+neqsim==3.16.0
+numpy

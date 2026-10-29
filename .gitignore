@@ -9,6 +9,7 @@ venv/
 .ipynb_checkpoints/
 output/
 *.csv
+!pvt/compositions/*.csv
 *.xlsx
 *.xls
 *.parquet
