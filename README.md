@@ -10,8 +10,8 @@ closure library, an OLGA batch driver, and a NeqSim → OLGA PVT table generator
 
 | Directory | Role |
 | --- | --- |
-| [`steady/`](#1-steady--the-steady-state-simulator) | steady-state simulator + PVT interface |
-| [`closures/`](#2-closures--the-pluggable-closure-library) | 12 swappable closure slots |
+| `steady/` | steady-state simulator + PVT interface |
+| `closures/` | 12 swappable closure slots |
 | [`transient/`](transient/README.md) | OLGA batch invocation (`check` / `run` / `status` / `curves`) |
 | [`pvt/`](pvt/README.md) | NeqSim → OLGA `.tab` table generation, shared by both sides |
 
@@ -192,8 +192,8 @@ NeqSim → OLGA 物性表生成器。
 
 | 目录 | 作用 |
 | --- | --- |
-| [`steady/`](#steady--稳态管道仿真核心) | 稳态仿真核心 + PVT 接口 |
-| [`closures/`](#closures--可插拔闭合库) | 12 个可替换闭合槽位 |
+| `steady/` | 稳态仿真核心 + PVT 接口 |
+| `closures/` | 12 个可替换闭合槽位 |
 | [`transient/`](transient/README.md) | OLGA 批量调用（`check` / `run` / `status` / `curves`） |
 | [`pvt/`](pvt/README.md) | NeqSim → OLGA `.tab` 生成，瞬态/稳态两侧共用 |
 
