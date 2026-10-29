@@ -1,0 +1,6 @@
+numpy>=1.23
+pandas>=1.5
+
+# 可选
+# matplotlib>=3.5   # steady/run.py 出图
+# thermo>=0.2       # PVT 闪蒸
